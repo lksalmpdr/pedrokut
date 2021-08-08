@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 
 import { Box, MainGrid } from '../src/components';
 import { AlurakutMenu, AlurakutProfileSidebarMenuDefault } from '../src/lib';
-import {ProfileRelationsBoxWrapper} from '../src/components';
+import { ProfileRelationsBoxWrapper } from '../src/components';
 import { OrkutNostalgicIconSet } from '../src/lib';
 import useForm from '../hooks/useForm';
 
@@ -29,26 +29,27 @@ const AfinityBox = ({title, entities}) =>
 {
   return(
     <ProfileRelationsBoxWrapper>
-      <h2 className='smallTitle'>{title}({entities.length})</h2>
+      <h2 className='smallTitle'>{title}({entities.length || 0})</h2>
 
       <ul>
             {
-              entities.slice(0, 5).map((entity)=>
-                {
-                  entity.hasOwnProperty('login')
-                    ? <li key={`person_card_${entity.login}`}>
+              entities.slice(0,6).map((entity)=>{
+                  if(entity.hasOwnProperty('login')){
+                    return(<li key={`person_card_${entity.login}`}>
                         <a href={`/users/${entity.login}`} key={entity.id}>
                           <img src={`${entity.avatar_url}`} />
                           <span>{entity.login}</span>
                         </a>
-                      </li>
-                    : <li key={`community_card_${entity.id}`}>
+                      </li>);
+                  }else{
+                    return(<li key={`community_card_${entity.id}`}>
                         <a href={`/communities/${entity.title}`} 
                           key={`image_community_${entity.title}`}>
-                          <img src={entity.imageUrl? entity.imageUrl : `http://placehold.it/300x300`} />
+                          <img src={entity.imageurl? entity.imageurl : `http://placehold.it/300x300`} />
                           <span>{entity.title}</span>
                         </a>
-                      </li>
+                      </li>);
+                      }
                 })
               }
       </ul>
@@ -59,17 +60,13 @@ const AfinityBox = ({title, entities}) =>
 }
 
 export default function Home(props) {
-  const usuarioGitHub = props.githubUser;
+  props.redirect ? window.redirect(props.redirect):null;
 
-  // const comunidadeInicial = {
-  //   id: new Date().toISOString(),
-  //   title: 'Eu odeio Acordar Cedo',
-  //   image: 'https://alurakut.vercel.app/capa-comunidade-01.jpg'
-  // }
+  const usuarioGitHub = props.githubUser;
   
   const [comunidades, setComunidades] = React.useState([{}]);
   
-  const { handleChange, values } = useForm({title : '', image : ''});
+  const { handleChange, values, clearForm } = useForm({title : '', image : ''});
 
   const [seguidores, setSeguidores] = React.useState([]);
 
@@ -81,8 +78,8 @@ export default function Home(props) {
 
     const novaComunidade = {
       title: dadosForm.get('title'),
-      image: dadosForm.get('image'),
-      creatorSlug: usuarioGitHub
+      imageurl: dadosForm.get('image'),
+      creatorslug: usuarioGitHub
     }
     const configNovaComunidade = {
       method: 'POST',
@@ -97,6 +94,8 @@ export default function Home(props) {
         const dados = await response.json();
         const comunidadesAtualizadas = [...comunidades, dados.createdRecord];
         setComunidades(comunidadesAtualizadas);
+        clearForm();
+
       });
     
   }
@@ -117,22 +116,22 @@ export default function Home(props) {
     const datoCMSConfig = {
       method: 'post',
       headers: {
-        'Authorization' : 'TOKEN_DATO',
+        'Authorization' : '', //DATO key, read-only
         'Content-Type' : 'application/json',
         'Accept' : 'application/json',
       },
       body: JSON.stringify({"query" : `query {
         allCommunities {
-          title
           id
-          imageUrl
-          creatorSlug
+          title
+          imageurl
+          creatorslug
         }
       }`}) 
     };
 
     fetch(`https://graphql.datocms.com/`, datoCMSConfig)
-    ,then( ( response ) => response.json() )
+    .then( ( response ) => response.json() )
     .then( (response)=>{
       const resComunidades = response.data.allCommunities;
       setComunidades(resComunidades);
@@ -143,7 +142,6 @@ export default function Home(props) {
     <>
     <AlurakutMenu githubUser={usuarioGitHub} />
     <MainGrid>
-      {/**transformar em aside */}
       <div className='profileArea' style={{gridArea : 'profileArea'}}>
         <ProfileSideBar user={usuarioGitHub} />
         
@@ -155,12 +153,12 @@ export default function Home(props) {
         </Box>
         <Box>
           <h2 className='subTitle'>O que você deseja fazer?</h2>
-          <form onSubmit={()=>{handleSubmit}}>
+          <form onSubmit={handleSubmit}>
             <div>
               <input 
-                placeholder='Qual cai ser o nome da sua comunidade?' 
+                placeholder='Qual vai ser o nome da sua comunidade?' 
                 name='title'
-                aria-label='Qual cai ser o nome da sua comunidade?'
+                aria-label='Qual vai ser o nome da sua comunidade?'
                 type='text'
                 value={values.title}
                 onChange={handleChange}
@@ -205,11 +203,14 @@ export async function getServerSideProps(context)
     }
   })
   .then(response=> response.json())
-  
+
   if(!isAuthenticated){
     return {
-      redirect : '/login?try=true',
-      permanent : false
+        props:
+          {
+            redirect : '/login?try=true',
+            permanent : false
+          }
     }
   }
   

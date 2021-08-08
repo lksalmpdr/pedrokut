@@ -5,12 +5,12 @@ export default async function requestReceiver(request, response)
 {
     if (request.method === 'POST')
     {
-        const DATO_TOKEN = '';
+        const DATO_TOKEN = ''; //Dato key, write one
         const client = new SiteClient(DATO_TOKEN);
 
         //usar DTO para validar o request.body
         const createdRecord = await client.items.create({
-            itemType : '', //id da coluna no DATO
+            itemType : '1009387', //id da coluna no DATO
             ...request.body
         });
 
